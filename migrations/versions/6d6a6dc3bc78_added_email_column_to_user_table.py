@@ -1,8 +1,8 @@
 """Add email column to users table
 
-Revision ID: [your_revision_id]
-Revises: [your_previous_revision_id]
-Create Date: [your_create_date]
+Revision ID: 6d6a6dc3bc78
+Revises: 4b1a05d2e3cc
+
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '[your_revision_id]'
-down_revision = '[your_previous_revision_id]'
+down_revision = '4b1a05d2e3cc'
 branch_labels = None
 depends_on = None
 
