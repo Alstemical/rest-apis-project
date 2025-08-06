@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: rest-apis-flask-python-web
+    env: docker
+    dockerfilePath: Dockerfile
+    healthCheckPath: /
+    startCommand: gunicorn --bind 0.0.0.0:80 "app:create_app()"
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: postgres
+          name: rest-apis-flask-db-prod
+          property: connectionString
+  - type: worker
+    name: rest-apis-flask-python-worker
+    env: docker
+    dockerfilePath: Dockerfile
+    buildCommand: ""
+    startCommand: rq worker
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: postgres
+          name: rest-apis-flask-db-prod
+          property: connectionString
