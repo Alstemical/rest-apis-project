@@ -10,7 +10,9 @@ done
 
 echo "PostgreSQL is up! Running migrations and starting server."
 
-alembic upgrade head
+
+
+flask db upgrade --directory migrations
 
 # Start RQ worker in the background
 rq worker &
