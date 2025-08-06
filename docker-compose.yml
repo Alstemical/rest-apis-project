@@ -16,7 +16,7 @@ services:
       depends_on:
         web:
           condition: service_started
-      command: python -m rq worker emails
+      command: rq worker emails
 
 
   db:
