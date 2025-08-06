@@ -23,7 +23,7 @@ def send_simple_message(to, subject, body):
     return requests.post(
         f"https://api.mailgun.net/v3/{domain}/messages",
         auth=("api", os.getenv("MAILGUN_API_KEY")),
-        DATA={"from": "T-Stem <mailgun@{domain}>",
+        data={"from": f"T-Stem <mailgun@{domain}>",
               "to": [to],
               "subject": subject,
               "text": body})
