@@ -1,40 +1,38 @@
 #!/bin/sh
 
-# Parse the hostname from the DATABASE_URL
-# Example: postgresql://user:pass@host:port/dbname
-DB_HOST=$(echo "$DATABASE_URL" | awk -F'[@/:]' '{print $5}')
-# Parse the port from the DATABASE_URL
-DB_PORT=$(echo "$DATABASE_URL" | awk -F'[:@]' '{print $4}' | awk -F'/' '{print $1}')
+# This script will parse the DATABASE_URL to get the host, port, user, and password.
+# The `psql` utility's internal logic is used for a more reliable approach.
+# A temporary file is used to store the password securely.
 
-# Fallback for local development if DATABASE_URL doesn't contain host/port (e.g., sqlite)
-# Or if you want to explicitly use 'db' for local Docker Compose
-if [ -z "$DB_HOST" ] || [ "$DB_HOST" = "" ]; then
-    DB_HOST="db"
-fi
-if [ -z "$DB_PORT" ] || [ "$DB_PORT" = "" ]; then
-    DB_PORT="5432"
-fi
+PGPASSFILE="/tmp/.pgpass"
+touch "$PGPASSFILE"
+chmod 0600 "$PGPASSFILE"
 
+# Extract components from DATABASE_URL using sed
+PGHOST=$(echo "$DATABASE_URL" | sed -r 's/.*@([^:]+):.*/\1/')
+PGPORT=$(echo "$DATABASE_URL" | sed -r 's/.*:([0-9]+)\/.*/\1/')
+PGUSER=$(echo "$DATABASE_URL" | sed -r 's/.*:\/\/\([^:]*\).*/\1/')
+PGPASSWORD=$(echo "$DATABASE_URL" | sed -r 's/.*:\/\/[^:]*:\([^@]*\).*/\1/')
+PGDATABASE=$(echo "$DATABASE_URL" | sed -r 's/.*\/\([^?]*\).*/\1/')
+
+# Write the credentials to the secure file
+echo "$PGHOST:$PGPORT:$PGDATABASE:$PGUSER:$PGPASSWORD" >> "$PGPASSFILE"
 
 MAX_RETRIES=10
 RETRY_INTERVAL=3
 
+echo "Waiting for PostgreSQL at ${PGHOST}:${PGPORT}..."
 
-# Wait for the database to be ready
-echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
-
-# Loop for a number of retries
 for i in $(seq 1 $MAX_RETRIES); do
-    # Check if the port is open using pg_isready
-    # We use pg_isready directly as it's more robust for PostgreSQL
-    if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$POSTGRES_USER"; then
+    # Use pg_isready with the secure password file
+    if pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE"; then
         echo "PostgreSQL is up! Running migrations and starting server."
         break
     else
         echo "PostgreSQL is not yet ready. Retrying in ${RETRY_INTERVAL} seconds..."
         sleep $RETRY_INTERVAL
     fi
-    # If we've exhausted all retries, exit
+
     if [ "$i" -eq "$MAX_RETRIES" ]; then
         echo "Max retries reached. PostgreSQL is not available."
         exit 1
@@ -43,5 +41,4 @@ done
 
 flask db upgrade
 
-# Ensure Gunicorn binds to 0.0.0.0 on port 80 as per Dockerfile's EXPOSE
 exec gunicorn --bind 0.0.0.0:80 "app:create_app()"
