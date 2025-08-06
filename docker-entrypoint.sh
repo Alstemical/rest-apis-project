@@ -1,31 +1,30 @@
 #!/bin/sh
 
-# This script will parse the DATABASE_URL to get the host, port, user, and password.
-# The `psql` utility's internal logic is used for a more reliable approach.
-# A temporary file is used to store the password securely.
+# The script will parse the DATABASE_URL to get the host, port, user, and password.
+# We will use simple string manipulation and defaults for robust parsing.
 
-PGPASSFILE="/tmp/.pgpass"
-touch "$PGPASSFILE"
-chmod 0600 "$PGPASSFILE"
+DB_HOST=$(echo "$DATABASE_URL" | sed 's|^.*@||g' | sed 's|:.*||g')
+DB_PORT=$(echo "$DATABASE_URL" | sed 's|.*:\([^/]*\).*|\1|g')
+DB_USER=$(echo "$DATABASE_URL" | sed 's|.*//\(.*\):.*@.*|\1|g')
+DB_PASS=$(echo "$DATABASE_URL" | sed 's|.*:\(.*\s\).*|\1|g')
+DB_NAME=$(echo "$DATABASE_URL" | sed 's|.*/\(.*\)|\1|g')
 
-# Extract components from DATABASE_URL using sed
-PGHOST=$(echo "$DATABASE_URL" | sed -r 's/.*@([^:]+):.*/\1/')
-PGPORT=$(echo "$DATABASE_URL" | sed -r 's/.*:([0-9]+)\/.*/\1/')
-PGUSER=$(echo "$DATABASE_URL" | sed -r 's/.*:\/\/\([^:]*\).*/\1/')
-PGPASSWORD=$(echo "$DATABASE_URL" | sed -r 's/.*:\/\/[^:]*:\([^@]*\).*/\1/')
-PGDATABASE=$(echo "$DATABASE_URL" | sed -r 's/.*\/\([^?]*\).*/\1/')
-
-# Write the credentials to the secure file
-echo "$PGHOST:$PGPORT:$PGDATABASE:$PGUSER:$PGPASSWORD" >> "$PGPASSFILE"
+# Provide defaults for local development
+if [ -z "$DB_HOST" ]; then
+  DB_HOST="db"
+fi
+if [ -z "$DB_PORT" ]; then
+  DB_PORT="5432"
+fi
 
 MAX_RETRIES=10
 RETRY_INTERVAL=3
 
-echo "Waiting for PostgreSQL at ${PGHOST}:${PGPORT}..."
+echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
 
+# Wait for the database to be ready
 for i in $(seq 1 $MAX_RETRIES); do
-    # Use pg_isready with the secure password file
-    if pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$PGDATABASE"; then
+    if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"; then
         echo "PostgreSQL is up! Running migrations and starting server."
         break
     else
