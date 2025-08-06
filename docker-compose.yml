@@ -3,7 +3,6 @@ services:
     build: .
     ports:
       - "5000:80"
-      - "5000:5432"
     depends_on:
       db:
         condition: service_healthy
