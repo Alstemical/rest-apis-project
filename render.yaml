@@ -11,15 +11,33 @@ services:
           type: postgres
           name: rest-apis-flask-db-prod
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: rest-apis-flask-redis
+          property: connectionString
   - type: worker
     name: rest-apis-flask-python-worker
     env: docker
     dockerfilePath: Dockerfile
     buildCommand: ""
-    startCommand: rq worker
+    startCommand: rq worker -u $(REDIS_URL)
     envVars:
       - key: DATABASE_URL
         fromService:
           type: postgres
           name: rest-apis-flask-db-prod
           property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: rest-apis-flask-redis
+          property: connectionString
+      - key: MAILGUN_DOMAIN
+        value: sandbox8363f71f306a49e99428afb8961f71ec.mailgun.org
+  - type: redis
+    name: rest-apis-flask-redis
+    env: docker
+    dockerfilePath: Dockerfile
+    buildCommand: ""
+    startCommand: redis-server --bind 0.0.0.0 --port 6379
