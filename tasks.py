@@ -6,7 +6,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DOMAIN = os.getenv("MAILGUN_DOMAIN")
-template_loader = jinja2.FileSystemLoader("templates")
+
+current_dir = os.pasth.dirname(os.path.abspath(__file__))
+TEMPLATES_FOLDER = os.path.join(current_dir, '..', 'templates')
+template_loader = jinja2.FileSystemLoader(TEMPLATES_FOLDER)
 template_env = jinja2.Environment(loader=template_loader)
 
 
